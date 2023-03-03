@@ -3,7 +3,7 @@ import { debounce } from "throttle-debounce";
 import { setState } from "./state.js";
 import { extractMessageCommand } from "./commands/extractMessage.js";
 import { messagePreview } from "./decorations/messagePreview.js";
-import { determineClosestPath } from "./utils/determineClosestPath.js";
+import { determineClosestUri } from "./utils/determineClosestUri.js";
 import { DefineConfig, initialize$import } from "@inlang/core/config";
 import fetch from 'node-fetch';
 import { ExtractMessage } from './actions/extractMessage.js';
@@ -45,20 +45,17 @@ async function main(args: { context: vscode.ExtensionContext }): Promise<void> {
   if (activeTextEditor === undefined) {
     return;
   }
-  // checking whether a config file exists -> if not dont start the extension
+  // try to find the closest config file
   const potentialConfigFileUris = await vscode.workspace.findFiles(
     "**/inlang.config.js"
   );
-  if (potentialConfigFileUris.length === 0) {
+  const closestConfig = determineClosestUri(activeTextEditor.document.uri, potentialConfigFileUris);
+  if (!closestConfig) {
     return;
   }
-  const closestConfigPath = determineClosestPath({
-    options: potentialConfigFileUris.map((uri) => uri.path),
-    to: activeTextEditor.document.uri.path,
-  });
 
   // get current workspace
-  const workspace = vscode.workspace.getWorkspaceFolder(vscode.Uri.parse(closestConfigPath))
+  const workspace = vscode.workspace.getWorkspaceFolder(closestConfig)
   if (!workspace) {
     return;
   }
@@ -66,7 +63,7 @@ async function main(args: { context: vscode.ExtensionContext }): Promise<void> {
   // initialize inlang core and resources for current workspace
   const fileSystemMapper = createFileSystemMapper(vscode.workspace.fs, workspace.uri);
   const $import = initialize$import({ fs: fileSystemMapper, fetch });
-  const module: { defineConfig: DefineConfig } = await import(closestConfigPath);
+  const module: { defineConfig: DefineConfig } = await import(closestConfig.path);
   const config = await module.defineConfig({ $fs: fileSystemMapper, $import });
   const loadResources = async () => {
     const resources = await config.readResources({ config })
