@@ -33,5 +33,5 @@
 		"format:fix": "cd ../.. && npm run format:fix:base ./source-code-git/client",
 		"---- OTHER ---------------------------------------------------------": "",
 		"clean": "rm -r -f ./dist ./.turbo ./coverage ./node_modules"
-	},
+	}
 }
